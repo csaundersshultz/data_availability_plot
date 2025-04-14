@@ -1,5 +1,6 @@
 
-![data_availability_plot](https://github.com/user-attachments/assets/70a4b08e-bf56-4379-969f-4cbee6ef8ec0)
+![data_avail_2](https://github.com/user-attachments/assets/84e815d3-039d-4e7f-89c0-200e8ebfb70f)
+
 
 # 📈 Data availability visualizer for SQLite (rover) databases
 
@@ -31,7 +32,7 @@ plt.close()
 ---
 
 --- 
-## 📦 Installation
+## ⬇️ Installation
 
 Clone the repository and move into the project directory:
 
