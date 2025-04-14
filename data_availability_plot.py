@@ -162,7 +162,7 @@ def plot_uptime(df, interval_days=1):
     df (DataFrame): The dataframe containing uptime percentages for various stations
     """
     # Prepare the figure and axis
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
 
     # Normalize for coloring
     colors = [
@@ -226,17 +226,25 @@ def plot_uptime(df, interval_days=1):
     cbar = plt.colorbar(sm, ax=ax)
     cbar.set_label("Availability (%)")
 
+    plt.tight_layout()
+
     return fig, ax
 
 
 def availability_plot(
-    client, network, station, location, channel, interval_days=1, max_chunk_days=365
+    tsindex_path,
+    network,
+    station,
+    location,
+    channel,
+    interval_days=1,
+    max_chunk_days=365,
 ):
     """
     Plot availability for all channels matching the given parameters.
 
     Parameters:
-        client: TSindex_Client instance
+        tsindex_path: Path to a timeseries.sqlite file, used to create TSindex_Client instance
         network: str
         station: str
         location: str
@@ -244,6 +252,17 @@ def availability_plot(
         interval_days: int, default 1 — how many days to group together to calculate availability %
         max_chunk_days: int, default 365 — how many days to request per chunk
     """
+    try:
+        client = TSindex_Client(
+            tsindex_path
+        )  # Initialize the client with the SQLite file
+    except Exception as e:
+        print(
+            f"Unable to create TSindex_Client instance. Check that a valid .sqlite file exists at {tsindex_filepath}"
+        )
+        print(e)
+        return
+
     inventory = (
         client.get_nslc(  # Gets the inventory in the sqlite file matching query params
             network=network, station=station, location=location, channel=channel
@@ -266,6 +285,7 @@ def availability_plot(
             station=channel[1],
             location=channel[2],
             channel=channel[3],
+            max_chunk_days=max_chunk_days,
         )
         if df_avail.empty:
             print(f"No availability data for {channel}.")
@@ -293,7 +313,9 @@ def availability_plot(
             )
     channel_uptimes = channel_uptimes.sort_values("period")
     # print(channel_uptimes.head())
+
     fig, ax = plot_uptime(channel_uptimes, interval_days=interval_days)
+
     return fig, ax
 
     # Now we are ready to plot
@@ -303,10 +325,9 @@ if __name__ == "__main__":
     tsindex_filepath = (
         r"C:\Users\csaunders-shultz\Documents\data\rover_database\timeseries.sqlite"
     )
-    client = TSindex_Client(tsindex_filepath)
 
     fig, ax = availability_plot(
-        client, network="A*", station="", location="", channel="HDF"
+        tsindex_filepath, network="A*", station="", location="", channel="HDF"
     )
     plt.show()
     plt.close()
