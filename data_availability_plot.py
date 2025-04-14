@@ -1,13 +1,12 @@
-from obspy.clients.fdsn import Client as FDSN_Client
-from obspy.clients.earthworm import Client as EW_Client
+# from obspy.clients.fdsn import Client as FDSN_Client
+# from obspy.clients.earthworm import Client as EW_Client
 from obspy.clients.filesystem.tsindex import Client as TSindex_Client
 from obspy import UTCDateTime as UTC
+import obspy
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import matplotlib as mpl
 import numpy as np
 
 
