@@ -4,7 +4,7 @@
 
 # 📈 Data availability visualizer for SQLite (rover) databases
 
-This Python tool visualizes the **data availability percentage of multiple stations** over time using horizontal bar charts. It queries a local sqlite file, intended to be one connected to a local rover database. 
+This Python tool visualizes the **data availability percentage of multiple stations** over time using horizontal bar charts. It queries a local sqlite file, intended to be one connected to a local rover database. Note, this does not pull the full data availability from IRIS, it only shows what is downloaded locally and available in a rover database. Hopefully in the future this can be updated to accommodate other obspy clients (earthworm / fdsn).
 
 ---
 
@@ -37,7 +37,7 @@ plt.close()
 Clone the repository and move into the project directory:
 
 ```bash
-git clone https://github.com/me/data_availability_plot.git
+git clone https://github.com/csaundersshultz/data_availability_plot
 cd data_availability_plot
 pip install -e .
 ```
