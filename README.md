@@ -19,7 +19,7 @@ This Python tool visualizes the **data availability percentage of multiple stati
 
 ## 🛠 USAGE
 ```python
-from data_availability_plot import data_availability_plot
+from data_availability_plot import availability_plot
 import matplotlib.pyplot as plt
 
 sqlite_path = "/path/to/rover/datarepo/timeseries.sqlite"
@@ -38,8 +38,6 @@ Clone the repository and move into the project directory:
 
 ```bash
 git clone https://github.com/csaundersshultz/data_availability_plot
-cd data_availability_plot
-pip install -e .
 ```
 
 ---
