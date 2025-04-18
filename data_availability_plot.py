@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
 import numpy as np
+import time
 
 
 def get_single_channel_availability(
-    client, network, station, location, channel, max_chunk_days=365
+    client, network, station, location, channel, max_chunk_days=365, sleep_time=0.0
 ):
     """
     Get full availability for a given channel across potentially many years.
@@ -23,6 +24,7 @@ def get_single_channel_availability(
         location: str
         channel: str
         max_chunk_days: int, default 365 — how many days to request per chunk
+        sleep_time: float, default 0.0 — time to sleep between requests (in seconds)
 
     Returns:
         Pandas DataFrame with availability data
@@ -51,8 +53,10 @@ def get_single_channel_availability(
     while current_start < end_extent:
         end_range = current_start + max_chunk_days * 86400  # 86400 seconds in a day
         current_end = min(end_range, end_extent)
+        # Queries always start at 00:00 and end at 23:59, regardless of input time
+        # So, end time should round up to 23:59:59 UTC of the end date
+        current_end = current_end.replace(hour=23, minute=59, second=59, microsecond=0)
         # print(f"Fetching from {current_start} to {current_end}...")
-
         try:
             chunk = client.get_availability(
                 network=network,
@@ -66,11 +70,20 @@ def get_single_channel_availability(
             all_data.extend(chunk)
         except Exception as e:
             print(
-                f"Failed to get {network}.{station}.{location}.{channel} data from {current_start} to {current_end}. \n\
-                    -- Try setting lower max_chunk_days -- \n{e}"
+                f"Failed to get {network}.{station}.{location}.{channel} availability from {current_start.date} to {current_end.date}. \n\
+                 This WILL result in missing data in the plot. \n\
+                 \t--if getting QueuePool limit, try setting larger max_chunk_days (100+) or adding a sleep_time \n\
+                 \t--if 'float object cannot be interpreted as an integer' OR 'max recursion depth exceeded', try setting lower max_chunk_days \n\
+                    \n{e}"
             )
 
-        current_start = current_end
+        current_start = (
+            current_end + 2
+        )  # Add two seconds, so next query starts at 00:00:01 UTC of the next date
+        time.sleep(
+            sleep_time
+        )  # Avoid overwhelming the server with requests, try 0.5 if exceeding QueuePool limit
+        # NOTE: The QueuePool limit is set by the obspy tsindex client, so that can't be changed simply.
 
     # Convert to DataFrame
     df = pd.DataFrame(
@@ -145,7 +158,7 @@ def compute_uptime_percentage(df, interval_days=1):
     uptime_df = pd.DataFrame(uptime_rows)
 
     grouped = (
-        uptime_df.groupby(["network", "station", "location", "channel", "period"])
+        uptime_df.groupby(["period"])
         .agg({"duration": "sum", "period_seconds": "first"})
         .reset_index()
     )
@@ -167,7 +180,7 @@ def plot_uptime(df, interval_days=1):
     # Normalize for coloring
     colors = [
         (255 / 255, 165 / 255, 0 / 255),  # Orange
-        (255 / 255, 230 / 255, 100 / 255),  # Yellow (optional midpoint)
+        (255 / 255, 230 / 255, 100 / 255),  # Yellow
         (50 / 255, 205 / 255, 50 / 255),  # Lime Green
     ]
     cmap_name = "orange_to_green"
@@ -203,11 +216,12 @@ def plot_uptime(df, interval_days=1):
     # Set the y-axis labels to station names
     ax.set_yticks(np.arange(num_stations))
     ax.set_yticklabels(stations)
+    ax.set_ylim(-0.6, num_stations - 0.4)  # Adjust y-limits to fit the bars
 
     # Set labels and
     ax.set_xlabel("Date")
     ax.set_ylabel("Stations")
-    ax.set_title(f"Data Availability by Station ({interval_days}-day intervals)")
+    ax.set_title(f"Data Availability by Station")
 
     # Format the x-axis dates
     ax.set_xlim(
@@ -224,7 +238,7 @@ def plot_uptime(df, interval_days=1):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])  # Empty array for colorbar
     cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label("Availability (%)")
+    cbar.set_label(f"Availability (%, {interval_days}-day intervals)")
 
     plt.tight_layout()
 
@@ -238,7 +252,8 @@ def availability_plot(
     location,
     channel,
     interval_days=1,
-    max_chunk_days=365,
+    max_chunk_days=100,
+    queue_pool_sleep_time=0.1,
 ):
     """
     Plot availability for all channels matching the given parameters.
@@ -268,6 +283,7 @@ def availability_plot(
             network=network, station=station, location=location, channel=channel
         )
     )
+    # print(inventory)
     if not inventory:
         print("No inventory found.")
         return
@@ -286,14 +302,13 @@ def availability_plot(
             location=channel[2],
             channel=channel[3],
             max_chunk_days=max_chunk_days,
+            sleep_time=queue_pool_sleep_time,
         )
         if df_avail.empty:
             print(f"No availability data for {channel}.")
             continue
 
         df_uptime = compute_uptime_percentage(df_avail, interval_days=interval_days)
-        # print(df_uptime)
-
         # Rename the uptime_percent column to include the channel name
         df_uptime = df_uptime.rename(columns={"uptime_percent": channel_name})
 
@@ -312,7 +327,6 @@ def availability_plot(
                 how="outer",  # Use outer join to keep all periods from all DataFrames
             )
     channel_uptimes = channel_uptimes.sort_values("period")
-    # print(channel_uptimes.head())
 
     fig, ax = plot_uptime(channel_uptimes, interval_days=interval_days)
 
@@ -327,7 +341,15 @@ if __name__ == "__main__":
     )
 
     fig, ax = availability_plot(
-        tsindex_filepath, network="A*", station="", location="", channel="HDF"
+        tsindex_filepath,
+        network="",
+        station="",
+        location="",
+        channel="HDF",
+        interval_days=1,
+        max_chunk_days=100,
+        queue_pool_sleep_time=0.1,
     )
+
     plt.show()
     plt.close()
