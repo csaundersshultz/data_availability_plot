@@ -1,6 +1,7 @@
 # from obspy.clients.fdsn import Client as FDSN_Client
 # from obspy.clients.earthworm import Client as EW_Client
 from obspy.clients.filesystem.tsindex import Client as TSindex_Client
+
 from obspy import UTCDateTime as UTC
 import obspy
 import pandas as pd
@@ -9,6 +10,21 @@ import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
 import numpy as np
 import time
+
+
+from sqlalchemy.pool import NullPool
+import sqlalchemy as sa
+from obspy.clients.filesystem.tsindex import TSIndexDatabaseHandler
+
+
+class NullPoolTSIndexDatabaseHandler(TSIndexDatabaseHandler):
+    def __init__(self, database, *args, **kwargs):
+        super().__init__(database, *args, **kwargs)
+
+        # Recreate engine with NullPool
+        db_path = f"sqlite:///{self.database}"
+        self.engine = sa.create_engine(db_path, poolclass=NullPool)
+        self.session = sa.orm.sessionmaker(bind=self.engine)
 
 
 def get_single_channel_availability(
@@ -71,11 +87,11 @@ def get_single_channel_availability(
         except Exception as e:
             print(
                 f"Failed to get {network}.{station}.{location}.{channel} availability from {current_start.date} to {current_end.date}. \n\
-                 This WILL result in missing data in the plot. \n\
-                 \t--if getting QueuePool limit, try setting larger max_chunk_days (100+) or adding a sleep_time \n\
-                 \t--if 'float object cannot be interpreted as an integer' OR 'max recursion depth exceeded', try setting lower max_chunk_days \n\
-                    \n{e}"
+                    {e}"
             )
+            # Extended error message
+            # \t--if getting QueuePool limit, try setting larger max_chunk_days (100+) or adding a sleep_time \n\
+            # \t--if 'float object cannot be interpreted as an integer' OR 'max recursion depth exceeded', try setting lower max_chunk_days \n\
 
         current_start = (
             current_end + 2
@@ -336,20 +352,53 @@ def availability_plot(
 
 
 if __name__ == "__main__":
-    tsindex_filepath = (
+    tsindex = (
         r"C:\Users\csaunders-shultz\Documents\data\rover_database\timeseries.sqlite"
     )
 
+    start_time = time.time()
+
+    # Instead of passing in a string (path to sqlite file), you can pass in a TSIndexDatabaseHandler object
+    # tsindex = NullPoolTSIndexDatabaseHandler(database=tsindex)
+
     fig, ax = availability_plot(
-        tsindex_filepath,
+        tsindex,
         network="",
         station="",
         location="",
-        channel="HDF",
+        channel="",
         interval_days=1,
-        max_chunk_days=100,
-        queue_pool_sleep_time=0.1,
+        max_chunk_days=3200,
+        queue_pool_sleep_time=0.0,
     )
+
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time:.4f} seconds")
 
     plt.show()
     plt.close()
+
+"""
+Testing notes:
+The NullPoolTSIndexDatabaseHandler class is a subclass of TSIndexDatabaseHandler that uses NullPool instead of QueuePool.
+
+Times to process my entire SQlite database (18 channels) with interval_days=1, sleep_time=0.0
+max_chunk_days      QueuePool (original)      NullPool (modified)
+100                 14.4 seconds             15.0 seconds
+50                  15.6 seconds             14.8 seconds
+200                 13.5 seconds             13.3 seconds
+400                 14.0 seconds             14.2 seconds
+800                 14.0 seconds             14.9 [THR Error]            
+25                  [QPL]                    34.8 seconds
+1600                 14.5 seconds            14.4 seconds
+
+Error codes:
+QPL     - QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00
+        (results in missing data in the plot, and very slow runtime)
+
+THR     sqlite3.ProgrammingError: SQLite objects created in a thread can only be used in that same thread.
+        (plot still looks okay after this error)
+
+
+"""
+print()
