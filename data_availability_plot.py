@@ -281,12 +281,14 @@ def availability_plot(
         max_chunk_days: int, default 365 — how many days to request per chunk
     """
     try:
+        # Pass in the
+        tsindex = NullPoolTSIndexDatabaseHandler(database=tsindex_path)
         client = TSindex_Client(
-            tsindex_path
-        )  # Initialize the client with the SQLite file
+            tsindex
+        )  # Initialize the client with the modified nullpool handler
     except Exception as e:
         print(
-            f"Unable to create TSindex_Client instance. Check that a valid .sqlite file exists at {tsindex_filepath}"
+            f"Unable to create TSindex_Client instance. Check that a valid .sqlite file exists at {tsindex_path}"
         )
         print(e)
         return
@@ -353,10 +355,7 @@ if __name__ == "__main__":
         r"C:\Users\csaunders-shultz\Documents\data\rover_database\timeseries.sqlite"
     )
 
-    start_time = time.time()
-
-    # Instead of passing in a string (path to sqlite file), you can pass in a TSIndexDatabaseHandler object
-    tsindex = NullPoolTSIndexDatabaseHandler(database=tsindex)
+    # start_time = time.time()
 
     fig, ax = availability_plot(
         tsindex,
@@ -369,8 +368,8 @@ if __name__ == "__main__":
         queue_pool_sleep_time=0.0,
     )
 
-    end_time = time.time()
-    print(f"Execution time: {end_time - start_time:.4f} seconds")
+    # end_time = time.time()
+    # print(f"Execution time: {end_time - start_time:.4f} seconds")
 
     plt.show()
     plt.close()
@@ -398,4 +397,4 @@ THR     sqlite3.ProgrammingError: SQLite objects created in a thread can only be
 
 
 """
-print()
+print("")
