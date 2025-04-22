@@ -1,5 +1,3 @@
-# from obspy.clients.fdsn import Client as FDSN_Client
-# from obspy.clients.earthworm import Client as EW_Client
 from obspy.clients.filesystem.tsindex import Client as TSindex_Client
 
 from obspy import UTCDateTime as UTC
@@ -99,7 +97,6 @@ def get_single_channel_availability(
         time.sleep(
             sleep_time
         )  # Avoid overwhelming the server with requests, try 0.5 if exceeding QueuePool limit
-        # NOTE: The QueuePool limit is set by the obspy tsindex client, so that can't be changed simply.
 
     # Convert to DataFrame
     df = pd.DataFrame(
@@ -269,7 +266,7 @@ def availability_plot(
     channel,
     interval_days=1,
     max_chunk_days=100,
-    queue_pool_sleep_time=0.1,
+    queue_pool_sleep_time=0.0,
 ):
     """
     Plot availability for all channels matching the given parameters.
@@ -359,7 +356,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Instead of passing in a string (path to sqlite file), you can pass in a TSIndexDatabaseHandler object
-    # tsindex = NullPoolTSIndexDatabaseHandler(database=tsindex)
+    tsindex = NullPoolTSIndexDatabaseHandler(database=tsindex)
 
     fig, ax = availability_plot(
         tsindex,
@@ -368,7 +365,7 @@ if __name__ == "__main__":
         location="",
         channel="",
         interval_days=1,
-        max_chunk_days=3200,
+        max_chunk_days=200,
         queue_pool_sleep_time=0.0,
     )
 
