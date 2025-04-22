@@ -6,25 +6,17 @@
 
 This Python tool visualizes the **data availability percentage of multiple stations** over time using horizontal bar charts. It queries a local sqlite file, intended to be one connected to a local rover database. Note, this does not pull the full data availability from IRIS, it only shows what is downloaded locally and available in a rover database. Hopefully in the future this can be updated to accommodate other obspy clients (earthworm / fdsn).
 
----
-
-## ✨ Features
-
-- Horizontal bar plots with time on the x-axis and stations on the y-axis.
-- Color-coded bars based on uptime percentages in custom intervals (default is daily)
-- Supports Network, Station, Location, and Channel query parameters
-- Built using `matplotlib` and `pandas`.
 
 ---
 
 ## 🛠 USAGE
 ```python
-from data_availability_plot import availability_plot
+from data_availability_plot import availability_plot, NullPoolTSIndexDatabaseHandler
 import matplotlib.pyplot as plt
 
 sqlite_path = "/path/to/rover/datarepo/timeseries.sqlite"
 
-fig, ax = availability_plot(sqlite_path, network="A*", station="", location="", channel="HDF", interval_days=1, max_chunk_days=365)
+fig, ax = availability_plot(sqlite_path, network="A*", station="", location="", channel="HDF", interval_days=1, max_chunk_days=200)
 plt.show()
 plt.close()
 ```
